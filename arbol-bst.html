@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BST Visualizer — Árbol Binario de Búsqueda</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0b0f19;
+  --bg2: #111827;
+  --bg3: #1a2236;
+  --bg4: #1f2d45;
+  --border: rgba(99,179,237,0.12);
+  --border2: rgba(99,179,237,0.25);
+  --accent: #63b3ed;
+  --accent2: #4fd1c5;
+  --accent3: #f6ad55;
+  --danger: #fc8181;
+  --success: #68d391;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #4a5568;
+  --node-bg: #1a2236;
+  --node-border: rgba(99,179,237,0.35);
+  --node-hl: #4fd1c5;
+  --node-active: #f6ad55;
+  --edge: rgba(99,179,237,0.2);
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Background grid ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(99,179,237,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,179,237,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  top: -40%; left: -20%;
+  width: 60%; height: 80%;
+  background: radial-gradient(ellipse, rgba(99,179,237,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* ── Header ── */
+header { margin-bottom: 2.5rem; }
+.badge {
+  display: inline-block;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent); border: 1px solid var(--border2);
+  padding: 3px 10px; border-radius: 99px; margin-bottom: 12px;
+}
+h1 {
+  font-family: var(--font-head);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800; line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+h1 span { color: var(--accent); }
+.subtitle { font-size: 12px; color: var(--text2); letter-spacing: 0.5px; }
+
+/* ── Layout ── */
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; align-items: start; }
+@media(max-width: 780px){ .layout { grid-template-columns: 1fr; } }
+
+/* ── Canvas panel ── */
+.canvas-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.r { background: #fc8181; }
+.dot.y { background: #f6ad55; }
+.dot.g { background: #68d391; }
+.panel-title { font-size: 11px; color: var(--text2); letter-spacing: 1px; text-transform: uppercase; margin-left: 4px; }
+#canvas-wrap { width: 100%; overflow-x: auto; }
+canvas { display: block; width: 100%; }
+
+/* ── Sidebar ── */
+.sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Cards ── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.card-head {
+  padding: 10px 14px;
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--accent); border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  font-weight: 700;
+}
+.card-body { padding: 14px; }
+
+/* ── Input group ── */
+.input-group { display: flex; gap: 6px; margin-bottom: 10px; }
+input[type=number] {
+  flex: 1; padding: 9px 12px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text);
+  font-family: var(--font-mono); font-size: 14px;
+  outline: none; transition: border-color .2s;
+  -moz-appearance: textfield;
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type=number]:focus { border-color: var(--accent); }
+
+/* ── Buttons ── */
+.btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.btn {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all .15s; text-align: center; letter-spacing: 0.3px;
+}
+.btn:hover { background: var(--bg4); border-color: var(--accent); color: var(--accent); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: rgba(99,179,237,0.12); border-color: var(--accent); color: var(--accent); }
+.btn.primary:hover { background: rgba(99,179,237,0.22); }
+.btn.success { background: rgba(104,211,145,0.1); border-color: var(--success); color: var(--success); }
+.btn.success:hover { background: rgba(104,211,145,0.2); }
+.btn.danger { background: rgba(252,129,129,0.1); border-color: var(--danger); color: var(--danger); }
+.btn.danger:hover { background: rgba(252,129,129,0.2); }
+.btn.warn { background: rgba(246,173,85,0.1); border-color: var(--accent3); color: var(--accent3); }
+.btn.warn:hover { background: rgba(246,173,85,0.2); }
+.btn.full { grid-column: 1 / -1; }
+
+/* ── Traversal buttons ── */
+.trav-group { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.trav-btn {
+  padding: 7px 8px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text2);
+  font-family: var(--font-mono); font-size: 11px;
+  cursor: pointer; transition: all .15s; text-align: center;
+}
+.trav-btn:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(79,209,197,0.08); }
+.trav-btn:active { transform: scale(0.97); }
+.trav-btn.active-trav { border-color: var(--accent2); color: var(--accent2); background: rgba(79,209,197,0.12); }
+
+/* ── Stats ── */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px;
+  text-align: center;
+}
+.stat-label { font-size: 9px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.stat-val { font-size: 22px; font-weight: 700; color: var(--accent); font-family: var(--font-head); }
+.stat.alt .stat-val { color: var(--accent2); }
+.stat.warn .stat-val { color: var(--accent3); }
+.stat.ok .stat-val { color: var(--success); }
+
+/* ── Info bar ── */
+#info-bar {
+  margin: 0 0 0;
+  padding: 10px 16px;
+  font-size: 12px; color: var(--text2);
+  border-top: 1px solid var(--border);
+  background: var(--bg3);
+  min-height: 40px;
+  display: flex; align-items: center; gap: 8px;
+  transition: all .3s;
+}
+#info-bar::before { content: '›'; color: var(--accent); font-size: 16px; }
+#info-bar.ok::before { content: '✓'; color: var(--success); }
+#info-bar.ok { color: var(--success); }
+#info-bar.err::before { content: '✗'; color: var(--danger); }
+#info-bar.err { color: var(--danger); }
+#info-bar.warn::before { content: '~'; color: var(--accent3); }
+#info-bar.warn { color: var(--accent3); }
+
+/* ── Traversal bar ── */
+.trav-bar-wrap {
+  padding: 10px 14px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 44px;
+}
+.trav-bar-label { font-size: 9px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+#traversal-bar {
+  font-size: 12px; color: var(--text2);
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+}
+#traversal-bar .tv { padding: 2px 6px; border-radius: 4px; transition: all .2s; }
+#traversal-bar .tv.done { color: var(--text3); }
+#traversal-bar .tv.cur {
+  background: rgba(246,173,85,0.2);
+  color: var(--accent3); font-weight: 700;
+  border: 1px solid rgba(246,173,85,0.4);
+}
+#traversal-bar .tv.pending { color: var(--text3); }
+#traversal-bar .arr { color: var(--text3); font-size: 10px; }
+
+/* ── Legend ── */
+.legend { display: flex; flex-direction: column; gap: 6px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Presets ── */
+.preset-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.preset-btn {
+  padding: 4px 9px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text2); font-family: var(--font-mono); font-size: 11px;
+  cursor: pointer; transition: all .15s;
+}
+.preset-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+header { animation: fadeIn .5s ease both; }
+.canvas-panel { animation: fadeIn .5s .1s ease both; }
+.sidebar > * { animation: fadeIn .5s ease both; }
+.sidebar > *:nth-child(1) { animation-delay: .15s; }
+.sidebar > *:nth-child(2) { animation-delay: .2s; }
+.sidebar > *:nth-child(3) { animation-delay: .25s; }
+.sidebar > *:nth-child(4) { animation-delay: .3s; }
+</style>
+</head>
+<body>
+<div id="root">
+  <header>
+    <div class="badge">Estructura de Datos · Universidad del Quindío</div>
+    <h1>Árbol <span>Binario</span> de Búsqueda</h1>
+    <p class="subtitle">Visualizador interactivo — BST · Métodos completos</p>
+  </header>
+
+  <div class="layout">
+    <!-- Canvas -->
+    <div class="canvas-panel">
+      <div class="panel-header">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <span class="panel-title">árbol.visualizar()</span>
+      </div>
+      <div id="canvas-wrap"><canvas id="c"></canvas></div>
+      <div id="info-bar">Árbol de ejemplo cargado. Prueba los métodos.</div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Insert/Delete/Search -->
+      <div class="card">
+        <div class="card-head">Operaciones</div>
+        <div class="card-body">
+          <div class="input-group">
+            <input id="val-input" type="number" placeholder="Valor..." onkeydown="if(event.key==='Enter')doInsert()"/>
+          </div>
+          <div class="btn-group">
+            <button class="btn success" onclick="doInsert()">+ Agregar</button>
+            <button class="btn danger" onclick="doDelete()">− Eliminar</button>
+            <button class="btn primary full" onclick="doSearch()">⌕ Buscar dato</button>
+          </div>
+          <div class="btn-group">
+            <button class="btn warn" onclick="doGetMenor()">↓ Menor</button>
+            <button class="btn warn" onclick="doGetMayor()">↑ Mayor</button>
+            <button class="btn danger full" onclick="doClear()">⌫ Borrar árbol</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Traversals -->
+      <div class="card">
+        <div class="card-head">Recorridos</div>
+        <div class="card-body">
+          <div class="trav-group" style="margin-bottom:10px">
+            <button class="trav-btn" id="tb-inorden" onclick="doTraversal('inorden')">InOrden</button>
+            <button class="trav-btn" id="tb-preorden" onclick="doTraversal('preorden')">PreOrden</button>
+            <button class="trav-btn" id="tb-postorden" onclick="doTraversal('postorden')">PostOrden</button>
+            <button class="trav-btn" id="tb-amplitud" onclick="doTraversal('amplitud')">Amplitud</button>
+          </div>
+          <div class="trav-bar-wrap">
+            <div class="trav-bar-label">Secuencia</div>
+            <div id="traversal-bar"><span style="color:var(--text3);font-size:11px">Selecciona un recorrido</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card">
+        <div class="card-head">Estadísticas</div>
+        <div class="card-body">
+          <div class="stats-grid">
+            <div class="stat"><div class="stat-label">Peso</div><div class="stat-val" id="s-peso">7</div></div>
+            <div class="stat alt"><div class="stat-label">Altura</div><div class="stat-val" id="s-altura">3</div></div>
+            <div class="stat warn"><div class="stat-label">Hojas</div><div class="stat-val" id="s-hojas">4</div></div>
+            <div class="stat ok"><div class="stat-label">Vacío</div><div class="stat-val" id="s-empty">No</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="card">
+        <div class="card-head">Ejemplos rápidos</div>
+        <div class="card-body">
+          <div class="preset-row">
+            <button class="preset-btn" onclick="loadPreset([50,30,70,20,40,60,80])">Balanceado</button>
+            <button class="preset-btn" onclick="loadPreset([10,20,30,40,50])">Lineal →</button>
+            <button class="preset-btn" onclick="loadPreset([40,20,60,10,30,50,70,5,15,25,35])">Completo</button>
+            <button class="preset-btn" onclick="loadRandom()">Aleatorio</button>
+          </div>
+          <div style="margin-top:10px;">
+            <div class="legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Nodo resaltado / encontrado</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div>Nodo activo en recorrido</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(99,179,237,0.25)"></div>Nodo normal</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── BST Logic (replica exacta de ArbolBinario.java) ── */
+class Nodo { constructor(v){ this.val=v; this.izq=null; this.der=null; } }
+class BST {
+  constructor(){ this.raiz=null; this.peso=0; }
+  estaVacio(){ return this.raiz===null; }
+  agregar(v){ this.raiz=this._agregar(this.raiz,v); this.peso++; }
+  _agregar(n,v){ if(!n)return new Nodo(v); if(v<n.val)n.izq=this._agregar(n.izq,v); else if(v>n.val)n.der=this._agregar(n.der,v); return n; }
+  existe(v){ return this._existe(this.raiz,v); }
+  _existe(n,v){ if(!n)return false; if(v===n.val)return true; return v<n.val?this._existe(n.izq,v):this._existe(n.der,v); }
+  altura(){ return this._altura(this.raiz); }
+  _altura(n){ if(!n)return 0; return 1+Math.max(this._altura(n.izq),this._altura(n.der)); }
+  nivel(v){ return this._nivel(this.raiz,v,0); }
+  _nivel(n,v,l){ if(!n)return -1; if(v===n.val)return l; return v<n.val?this._nivel(n.izq,v,l+1):this._nivel(n.der,v,l+1); }
+  hojas(){ return this._hojas(this.raiz); }
+  _hojas(n){ if(!n)return 0; if(!n.izq&&!n.der)return 1; return this._hojas(n.izq)+this._hojas(n.der); }
+  mayor(){ if(!this.raiz)return null; let n=this.raiz; while(n.der)n=n.der; return n.val; }
+  menor(){ if(!this.raiz)return null; let n=this.raiz; while(n.izq)n=n.izq; return n.val; }
+  eliminar(v){ if(this.existe(v)){this.raiz=this._eliminar(this.raiz,v);this.peso--;return true;} return false; }
+  _eliminar(n,v){
+    if(!n)return null;
+    if(v<n.val)n.izq=this._eliminar(n.izq,v);
+    else if(v>n.val)n.der=this._eliminar(n.der,v);
+    else{
+      if(!n.izq&&!n.der)return null;
+      if(!n.izq)return n.der;
+      if(!n.der)return n.izq;
+      let m=n.der; while(m.izq)m=m.izq;
+      n.val=m.val; n.der=this._eliminar(n.der,m.val);
+    }
+    return n;
+  }
+  borrar(){ this.raiz=null; this.peso=0; }
+  inorden(){ const r=[]; this._io(this.raiz,r); return r; }
+  _io(n,r){ if(!n)return; this._io(n.izq,r); r.push(n.val); this._io(n.der,r); }
+  preorden(){ const r=[]; this._pre(this.raiz,r); return r; }
+  _pre(n,r){ if(!n)return; r.push(n.val); this._pre(n.izq,r); this._pre(n.der,r); }
+  postorden(){ const r=[]; this._post(this.raiz,r); return r; }
+  _post(n,r){ if(!n)return; this._post(n.izq,r); this._post(n.der,r); r.push(n.val); }
+  amplitud(){
+    if(!this.raiz)return[];
+    const q=[this.raiz],r=[];
+    while(q.length){const n=q.shift();r.push(n.val);if(n.izq)q.push(n.izq);if(n.der)q.push(n.der);}
+    return r;
+  }
+}
+
+/* ── State ── */
+const tree = new BST();
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let highlighted = null, hlColor = '#4fd1c5';
+let traversalSeq = [], traversalIdx = -1, animTimer = null;
+let activeTrav = null;
+
+/* ── Node layout ── */
+function nodePositions(root){
+  const pos={};
+  let counter=0;
+  function inorder(n,depth){
+    if(!n)return;
+    inorder(n.izq,depth+1);
+    pos[n.val]={x:counter,y:depth}; counter++;
+    inorder(n.der,depth+1);
+  }
+  inorder(root,0);
+  return pos;
+}
+
+/* ── Draw ── */
+function draw(){
+  const W=700, H=380;
+  canvas.width=W; canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+
+  if(tree.estaVacio()){
+    ctx.fillStyle='rgba(99,179,237,0.2)';
+    ctx.font='13px "JetBrains Mono", monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('// árbol vacío — agrega un nodo para comenzar', W/2, H/2);
+    updateStats(); return;
+  }
+
+  const pos = nodePositions(tree.raiz);
+  const vals = Object.keys(pos).map(Number);
+  const maxX = Math.max(...vals.map(v=>pos[v].x));
+  const maxY = Math.max(...vals.map(v=>pos[v].y));
+  const padX=50, padY=44, R=20;
+  const xScale = maxX>0 ? (W-padX*2)/maxX : 0;
+  const yScale = maxY>0 ? Math.min((H-padY*2)/maxY, 68) : 0;
+  const px = v => maxX===0 ? W/2 : padX+pos[v].x*xScale;
+  const py = v => padY+pos[v].y*(yScale||68);
+
+  /* edges */
+  function drawEdges(n){
+    if(!n)return;
+    const grd = ctx.createLinearGradient(0,0,0,H);
+    grd.addColorStop(0,'rgba(99,179,237,0.18)');
+    grd.addColorStop(1,'rgba(99,179,237,0.06)');
+    ctx.strokeStyle=grd; ctx.lineWidth=1.5;
+    if(n.izq){
+      ctx.beginPath(); ctx.moveTo(px(n.val),py(n.val)); ctx.lineTo(px(n.izq.val),py(n.izq.val)); ctx.stroke();
+      drawEdges(n.izq);
+    }
+    if(n.der){
+      ctx.beginPath(); ctx.moveTo(px(n.val),py(n.val)); ctx.lineTo(px(n.der.val),py(n.der.val)); ctx.stroke();
+      drawEdges(n.der);
+    }
+  }
+  drawEdges(tree.raiz);
+
+  /* nodes */
+  function drawNode(n){
+    if(!n)return;
+    const x=px(n.val), y=py(n.val);
+    const isHL = highlighted && highlighted.has(n.val);
+    const isTrav = traversalIdx>=0 && traversalSeq[traversalIdx]===n.val;
+    const isDone = traversalIdx>=0 && traversalSeq.slice(0,traversalIdx).includes(n.val);
+
+    /* glow */
+    if(isHL||isTrav){
+      ctx.beginPath(); ctx.arc(x,y,R+8,0,Math.PI*2);
+      const g=ctx.createRadialGradient(x,y,R,x,y,R+8);
+      const c=isTrav?'246,173,85':'79,209,197';
+      g.addColorStop(0,`rgba(${c},0.3)`); g.addColorStop(1,`rgba(${c},0)`);
+      ctx.fillStyle=g; ctx.fill();
+    }
+
+    /* circle */
+    ctx.beginPath(); ctx.arc(x,y,R,0,Math.PI*2);
+    if(isTrav){ ctx.fillStyle='rgba(246,173,85,0.2)'; }
+    else if(isHL){ ctx.fillStyle='rgba(79,209,197,0.15)'; }
+    else if(isDone){ ctx.fillStyle='rgba(99,179,237,0.06)'; }
+    else{ ctx.fillStyle='rgba(26,34,54,0.9)'; }
+    ctx.fill();
+
+    /* border */
+    ctx.lineWidth = isTrav||isHL ? 1.5 : 1;
+    ctx.strokeStyle = isTrav?'#f6ad55': isHL?'#4fd1c5': isDone?'rgba(99,179,237,0.2)':'rgba(99,179,237,0.3)';
+    ctx.stroke();
+
+    /* text */
+    ctx.fillStyle = isTrav?'#f6ad55': isHL?'#4fd1c5': isDone?'rgba(148,163,184,0.4)':'#e2e8f0';
+    ctx.font = `${isTrav||isHL?'700':'500'} 12px "JetBrains Mono", monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(n.val, x, y);
+
+    drawNode(n.izq); drawNode(n.der);
+  }
+  drawNode(tree.raiz);
+  updateStats();
+}
+
+function updateStats(){
+  document.getElementById('s-peso').textContent = tree.peso;
+  document.getElementById('s-altura').textContent = tree.altura();
+  document.getElementById('s-hojas').textContent = tree.hojas();
+  document.getElementById('s-empty').textContent = tree.estaVacio()?'Sí':'No';
+}
+
+/* ── Info bar ── */
+function info(msg, type=''){
+  const b=document.getElementById('info-bar');
+  b.textContent=msg; b.className=type;
+}
+
+/* ── Get input ── */
+function getVal(){
+  const v=parseInt(document.getElementById('val-input').value);
+  if(isNaN(v)){info('Ingresa un número válido.','err');return null;}
+  return v;
+}
+
+/* ── Operations ── */
+function doInsert(){
+  const v=getVal(); if(v===null)return;
+  if(tree.existe(v)){info(`${v} ya existe en el árbol.`,'warn');return;}
+  clearTraversal();
+  tree.agregar(v);
+  highlighted=new Set([v]); hlColor='#4fd1c5';
+  draw(); info(`agregar(${v}) — nodo insertado correctamente.`,'ok');
+  setTimeout(()=>{highlighted=null;draw();},1400);
+  document.getElementById('val-input').value='';
+}
+
+function doDelete(){
+  const v=getVal(); if(v===null)return;
+  clearTraversal();
+  const ok=tree.eliminar(v);
+  if(ok){draw();info(`eliminar(${v}) — nodo removido del árbol.`,'ok');}
+  else{draw();info(`eliminar(${v}) — el valor no existe.`,'err');}
+}
+
+function doSearch(){
+  const v=getVal(); if(v===null)return;
+  clearTraversal();
+  const found=tree.existe(v);
+  if(found){
+    highlighted=new Set([v]); hlColor='#4fd1c5';
+    draw();
+    const lvl=tree.nivel(v);
+    info(`existe(${v}) → true · nivel: ${lvl} · mayor: ${tree.mayor()} · menor: ${tree.menor()}`,'ok');
+    setTimeout(()=>{highlighted=null;draw();},2000);
+  } else {
+    draw(); info(`existe(${v}) → false · no encontrado en el árbol.`,'err');
+  }
+}
+
+function doGetMenor(){
+  clearTraversal();
+  const m=tree.menor();
+  if(m===null){info('El árbol está vacío.','err');return;}
+  highlighted=new Set([m]); hlColor='#f6ad55';
+  draw(); info(`obtenerMenor() → ${m}`,'warn');
+  setTimeout(()=>{highlighted=null;draw();},1800);
+}
+
+function doGetMayor(){
+  clearTraversal();
+  const m=tree.mayor();
+  if(m===null){info('El árbol está vacío.','err');return;}
+  highlighted=new Set([m]); hlColor='#f6ad55';
+  draw(); info(`obtenerMayor() → ${m}`,'warn');
+  setTimeout(()=>{highlighted=null;draw();},1800);
+}
+
+/* ── Traversals ── */
+const travNames={
+  inorden:'inorden() — Izquierda → Raíz → Derecha',
+  preorden:'preorden() — Raíz → Izquierda → Derecha',
+  postorden:'postorden() — Izquierda → Derecha → Raíz',
+  amplitud:'imprimirAmplitud() — Por niveles (BFS)'
+};
+
+function doTraversal(type){
+  clearTraversal(true);
+  let seq=[];
+  if(type==='inorden')seq=tree.inorden();
+  else if(type==='preorden')seq=tree.preorden();
+  else if(type==='postorden')seq=tree.postorden();
+  else seq=tree.amplitud();
+  if(!seq.length){info('El árbol está vacío.','err');return;}
+  traversalSeq=seq; traversalIdx=0; activeTrav=type;
+  document.querySelectorAll('.trav-btn').forEach(b=>b.classList.remove('active-trav'));
+  document.getElementById('tb-'+type).classList.add('active-trav');
+  info(travNames[type]);
+  renderTraversalBar(); draw();
+  animTimer=setInterval(()=>{
+    traversalIdx++;
+    if(traversalIdx>=traversalSeq.length){
+      clearTraversal();
+      info(`${travNames[type]} — completado · ${seq.length} nodos visitados`,'ok');
+      return;
+    }
+    renderTraversalBar(); draw();
+  },650);
+}
+
+function renderTraversalBar(){
+  const bar=document.getElementById('traversal-bar');
+  bar.innerHTML=traversalSeq.map((v,i)=>{
+    const cls = i===traversalIdx?'cur': i<traversalIdx?'done':'pending';
+    const arrow = i<traversalSeq.length-1?'<span class="arr">›</span>':'';
+    return `<span class="tv ${cls}">${v}</span>${arrow}`;
+  }).join('');
+}
+
+function clearTraversal(silent=false){
+  if(animTimer)clearInterval(animTimer);
+  animTimer=null; traversalSeq=[]; traversalIdx=-1; activeTrav=null;
+  document.querySelectorAll('.trav-btn').forEach(b=>b.classList.remove('active-trav'));
+  if(!silent) document.getElementById('traversal-bar').innerHTML='<span style="color:var(--text3);font-size:11px">Selecciona un recorrido</span>';
+}
+
+function doClear(){
+  tree.borrar(); clearTraversal(); highlighted=null;
+  draw(); info('borrarArbol() — árbol eliminado.');
+}
+
+/* ── Presets ── */
+function loadPreset(vals){
+  tree.borrar(); clearTraversal(); highlighted=null;
+  vals.forEach(v=>tree.agregar(v));
+  draw(); info(`Ejemplo cargado con ${vals.length} nodos.`,'ok');
+}
+
+function loadRandom(){
+  tree.borrar(); clearTraversal(); highlighted=null;
+  const n=Math.floor(Math.random()*6)+5;
+  const used=new Set();
+  while(used.size<n){ used.add(Math.floor(Math.random()*99)+1); }
+  used.forEach(v=>tree.agregar(v));
+  draw(); info(`loadRandom() — ${n} nodos aleatorios generados.`,'ok');
+}
+
+/* ── Init ── */
+loadPreset([50,30,70,20,40,60,80]);
+</script>
+</body>
+</html>
